@@ -2,9 +2,10 @@ import random
 import time
 
 
-def nqueens_min_conflicts_backtrack(n):
+def nqueens_min_conflicts_iterative_repair(n):
     # print(n)
-    pass
+
+    return None
 
 
 def read_file_to_list(file_name):
@@ -32,7 +33,7 @@ def main():
 
     results = []
     for n in input_data:
-        results.append(nqueens_min_conflicts_backtrack(n))
+        results.append(nqueens_min_conflicts_iterative_repair(n))
 
     write_2d_list_to_file(results, output_file_name)
 
