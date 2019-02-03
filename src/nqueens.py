@@ -2,10 +2,29 @@ import random
 import time
 
 
-def nqueens_min_conflicts_iterative_repair(n):
-    # print(n)
+class NQueens:
+    def __init__(self, n):
+        self.n = n
+        self.positions = []
+        self.num_conflicts = []
 
-    return None
+    def nqueens_min_conflicts_iterative_repair(self):
+        return None
+
+    def min_conflicts(self):
+        pass
+
+    def has_conflict(self):
+        return True
+
+    def initialize_positions(self):
+        return []
+
+    def move_queen(self, source_row, destination_col, delete_list, update_list):
+        pass
+
+    def find_max(self):
+        return None
 
 
 def read_file_to_list(file_name):
@@ -33,7 +52,8 @@ def main():
 
     results = []
     for n in input_data:
-        results.append(nqueens_min_conflicts_iterative_repair(n))
+        result = NQueens(n)
+        results.append(result.nqueens_min_conflicts_iterative_repair())
 
     write_2d_list_to_file(results, output_file_name)
 
