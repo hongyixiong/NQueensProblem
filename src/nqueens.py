@@ -1,5 +1,5 @@
 """
-AI Assignment1
+AI Assignment 1
 Group 10
 """
 import time
