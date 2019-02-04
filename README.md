@@ -1,2 +1,2 @@
-# IyterRepository
-Iyter's repository
+# NQueensProblem
+NQueensProblem
