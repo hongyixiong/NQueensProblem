@@ -5,6 +5,7 @@ Group 10
 import time
 import random
 
+
 class NQueens:
     def __init__(self, n):
         self.n = n
