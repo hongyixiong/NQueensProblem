@@ -7,6 +7,7 @@ class NQueens:
         self.n = n
         self.positions = []
         self.num_conflicts = []
+        self.num_attempts = 1
 
     def nqueens_min_conflicts_iterative_repair(self):
         """
@@ -14,11 +15,49 @@ class NQueens:
 
         :return: a list representing a solution to the N-Queens problem
         """
+        self.reset_parameters()
         self.generate_initial_positions()
+        queens_left = self.new_queens_left_set()
+        iteration_number = 0
+        max_iteration_number = self.n * 10
+        while iteration_number < max_iteration_number:
+            if self.is_solution():
+                return self.positions
+            if len(queens_left) == 0:
+                queens_left = self.new_queens_left_set()
 
-        # todo: remove setting data created for testing purpose
-        self.positions = [[1, 2, 3, 4], [-2, 3, 63, 5, 8], [], [4, 0, 1, 5, -1]]
-        return self.positions
+            queen_to_move = self.find_max(queens_left)
+            queens_left.remove(queen_to_move)
+            destination_col, conflicts_decrement_list, conflicts_increment_list = self.min_conflicts(queen_to_move)
+            self.move_queen(queen_to_move, destination_col, conflicts_decrement_list, conflicts_increment_list)
+
+        if self.is_solution():
+            return self.positions
+        else:
+            self.num_attempts += 1
+            self.nqueens_min_conflicts_iterative_repair()
+
+    def reset_parameters(self):
+        """
+        Reset the paramemters of the class in order to restart the search for a solution.
+        """
+        self.positions = []
+        self.num_conflicts = []
+
+    def new_queens_left_set(self):
+        """
+        Create a new set for queens_left.
+        :return: a set consists of numbers from 0 to n-1
+        """
+        return set([x for x in range(0, self.n)])
+
+    def is_solution(self):
+        """
+        Checks whether a solution is found, that is, whether all elements in the num_conflicts list is 0.
+
+        :return: a boolean indicating whether num_conflicts has size n and all elements of the num_conflicts is 0.
+        """
+        return len(self.num_conflicts) == self.n and not any(self.num_conflicts)
 
     def min_conflicts(self, row):
         """
@@ -30,10 +69,10 @@ class NQueens:
                   the list of row numbers where their conflict numbers need to be increased by 1.
         """
         destination_col = 0  # todo: to be replaced
-        delete_list = []
-        update_list = []
+        conflicts_decrement_list = []
+        conflicts_increment_list = []
 
-        return destination_col, delete_list, update_list
+        return destination_col, conflicts_decrement_list, conflicts_increment_list
 
     def has_conflict(self, row1, col1, row2, col2):
         """
@@ -65,19 +104,20 @@ class NQueens:
         """
         pass
 
-    def find_max(self):
+    def find_max(self, queens_left):
         """
-        Find the queen with the maximum number of conflicts. If there are more than one queen with maximum number of conflicts,
-        then choose a queen randomly.
+        Find the queen with the maximum number of conflicts that has been moved the least amount of times so far.
+        If there are more than one queen that satisfies, then choose a queen randomly.
 
+        :param queens_left: a list of row numbers for the queens that have been moved the least amount of times.
         :return: a row number representing the queen
         """
-        return None
+        return -1
 
 
 def read_file_to_list(file_name):
     file = open(file_name, "r")
-    input_data = [line.rstrip('\n') for line in file]
+    input_data = [int(line.rstrip('\n')) for line in file]
     file.close()
     return input_data
 
