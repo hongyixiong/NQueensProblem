@@ -1,5 +1,6 @@
-import random
-import time
+'''
+AI Assignment1
+'''
 
 
 class NQueens:
