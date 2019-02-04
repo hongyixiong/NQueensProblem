@@ -1,7 +1,9 @@
-'''
+"""
 AI Assignment1
-'''
-
+Group 10
+"""
+import time
+import random
 
 class NQueens:
     def __init__(self, n):
@@ -117,14 +119,14 @@ class NQueens:
 
 
 def read_file_to_list(file_name):
-    file = open(file_name, "r")
+    file = open(file_name, 'r')
     input_data = [int(line.rstrip('\n')) for line in file]
     file.close()
     return input_data
 
 
 def write_2d_list_to_file(data, file_name):
-    file = open(file_name, "w+")
+    file = open(file_name, 'w+')
     for row in range(0, len(data)):
         # todo: might need to add 1 to x because row and column numbers on a chess board
         # are 1 higher than Python list indices.
@@ -136,8 +138,8 @@ def write_2d_list_to_file(data, file_name):
 
 
 def main():
-    input_file_name = "nqueens.txt"
-    output_file_name = "nqueens_out.txt"
+    input_file_name = 'nqueens.txt'
+    output_file_name = 'nqueens_out.txt'
     input_data = read_file_to_list(input_file_name)
     # print(input_data if len(input_data) < 100 else input_data[0:100])
 
