@@ -1,5 +1,6 @@
 """
 AI Assignment 1
+NQueens
 Group 10
 """
 import time
