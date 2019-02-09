@@ -38,6 +38,7 @@ class NQueens:
             if iteration_number % 50 == 0:
                 print('iteration_number is', iteration_number)
             if self.is_solution():
+                # todo: remove tesing
                 self.num_steps = self.num_steps + iteration_number + 1
                 return self.positions
             if len(queens_left) == 0:
@@ -72,7 +73,7 @@ class NQueens:
         Create a new set for queens_left.
         :return: a set consists of numbers from 0 to n-1
         """
-        return set([x for x in range(0, self.n)])
+        return set(x for x in range(0, self.n))
 
     def is_solution(self):
         """
@@ -80,7 +81,7 @@ class NQueens:
 
         :return: a boolean indicating whether num_conflicts has size n and all elements of the num_conflicts is 0.
         """
-        return len(self.num_conflicts) == self.n and not any(self.num_conflicts)
+        return not any(self.num_conflicts)
 
     def generate_initial_positions(self):
         """
