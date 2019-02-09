@@ -91,7 +91,16 @@ class NQueens:
             # todo: remove testing
             if row % 100 == 0:
                 print("Creating queen at row", row)
-            destination_col, conflicts_decrement_list, conflicts_increment_list = self.min_conflicts(row)
+            if row == 0:
+                destination_col = 0
+            else:
+                next_col = self.positions[-1] + 2
+                if next_col >= self.n:
+                    destination_col = 1
+                else:
+                    destination_col = next_col
+            conflicts_decrement_list, conflicts_increment_list = \
+                self.compute_conflict_changes_lists(row, None, destination_col)
             self.col_to_occurrence[destination_col] = self.col_to_occurrence[destination_col] + 1
             self.positions.append(destination_col)
             self.update_num_conflicts(row, destination_col, conflicts_decrement_list, conflicts_increment_list)
