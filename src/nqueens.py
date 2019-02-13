@@ -98,7 +98,7 @@ class NQueens:
                 print("Creating queen at row", row)
             '''
             div3odd = False
-            if self.n % 3 == 0 and self.n % 2 != 0:
+            if self.n % 3 == 0 and self.n % 2 != 0:  # Special board size
                 div3odd = True
 
             if row == 0:
