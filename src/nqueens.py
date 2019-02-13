@@ -3,15 +3,19 @@ AI Assignment 1
 N-Queens Problem
 Group 10
 """
-import time
 import random
+import time
 
 
 class NQueens:
     def __init__(self, n):
+        """
+        Constructor
+        :param n: size of the board
+        """
         self.n = n
         self.positions = []
-        self.num_conflicts = [0 for x in range(n)]
+        self.num_conflicts = []
         self.col_to_occurrence = dict()
         # todo: remove testing
         self.num_attempts = 1
@@ -89,14 +93,23 @@ class NQueens:
         """
         for row in range(0, self.n):
             # todo: remove testing
+            '''
             if row % 100 == 0:
                 print("Creating queen at row", row)
+            '''
+            div3odd = False
+            if self.n % 3 == 0 and self.n % 2 != 0:
+                div3odd = True
+
             if row == 0:
-                destination_col = 0
+                destination_col = 0  # Column to put the new Queen
             else:
                 next_col = self.positions[-1] + 2
                 if next_col >= self.n:
+                    # Reach the left end of the board
                     destination_col = 1
+                    if div3odd:
+                        destination_col = 3
                 else:
                     destination_col = next_col
             conflicts_decrement_list, conflicts_increment_list = \
