@@ -39,7 +39,7 @@ class NQueens:
         max_iteration_number = self.n * 100
         while iteration_number < max_iteration_number:
             # todo: remove testing
-            if iteration_number % 50 == 0:
+            if iteration_number % 100 == 0:
                 print('iteration_number is', iteration_number)
             if self.is_solution():
                 # todo: remove tesing

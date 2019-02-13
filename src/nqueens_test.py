@@ -25,6 +25,7 @@ def test_is_solution():
     for row in range(len(data)):
         if get_num_conflict_at_square(row, data[row], data) != 0:
             is_solution = False
+            break
     print("Is this a solution:", is_solution)
     return is_solution
 
@@ -44,7 +45,9 @@ def has_conflict(row1, col1, row2, col2):
 
 
 def main():
+    st = time.time()
     test_is_solution()
+    print(time.time() - st)
 
 
 main()
