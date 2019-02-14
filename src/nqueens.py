@@ -140,7 +140,7 @@ class NQueens:
         not_found = -1  # must be a number outside of range 0 to n-1 inclusive.
         destination_col = not_found
         for col2 in self.col_to_occurrence:
-            if self.col_to_occurrence[col2] == 0:
+            if col2 != col1 and self.col_to_occurrence[col2] == 0:
                 if self.is_num_conflict_at_square_zero(row, col2):
                     destination_col = col2
                     break
@@ -153,7 +153,7 @@ class NQueens:
             max_num_tries = 100
             while not found_one_conflict_col and counter < max_num_tries:
                 rand_col = random.randrange(0, self.n)
-                if self.is_num_conflict_at_square_one(row, rand_col) == 1:
+                if col2 != col1 and self.is_num_conflict_at_square_one(row, rand_col) == 1:
                     destination_col = rand_col
                     found_one_conflict_col = True
                 counter = counter + 1
