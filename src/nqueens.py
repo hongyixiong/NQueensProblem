@@ -156,6 +156,7 @@ class NQueens:
                 if self.is_num_conflict_at_square_one(row, rand_col) == 1:
                     destination_col = rand_col
                     found_one_conflict_col = True
+                counter = counter + 1
 
         if destination_col == not_found:
             # Iterate through all the columns along the given row.
