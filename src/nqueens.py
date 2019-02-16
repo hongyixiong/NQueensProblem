@@ -11,13 +11,19 @@ class NQueens:
     def __init__(self, n):
         """
         Constructor
+
         :param n: size of the board
         """
         self.n = n
         self.positions = []
         self.num_conflicts = []
         self.col_to_occurrence = dict()
-        # todo: remove testing
+        # left diagonal keys from -(n-1) to n-1, right diagonal keys from 0 to 2*(n-1)
+        # add 1 to the right end due to definition of range function, and we get (n-1)+1 = n, and 2*(n-1)+1 = 2*n-1
+        self.left_diagonal_to_rows = dict.fromkeys([x for x in range(-n + 1, n)])
+        self.right_diagonal_to_rows = dict.fromkeys([x for x in range(0, 2 * n - 1)])
+        self.column_number_to_rows = dict.fromkeys(x for x in range(0, n))
+        # parameters for algorithm analysis
         self.num_attempts = 1
         self.num_steps = 0
         self.start_time = time.time()
@@ -30,10 +36,8 @@ class NQueens:
         :return: a list representing a solution to the N-Queens problem
         """
         self.reset_parameters()
-        # print("Starting to generate initial positions")
         self.generate_initial_positions()
         self.initialization_time_duration = time.time() - self.start_time
-        # print("Ended to generate initial positions")
         queens_left = self.new_queens_left_set()
         iteration_number = 0
         max_iteration_number = self.n * 100
@@ -42,8 +46,7 @@ class NQueens:
             if iteration_number % 100 == 0:
                 print('iteration_number is', iteration_number)
             if self.is_solution():
-                # todo: remove tesing
-                self.num_steps = self.num_steps + iteration_number + 1
+                self.num_steps = iteration_number
                 return self.positions
             if len(queens_left) == 0:
                 queens_left = self.new_queens_left_set()
@@ -52,6 +55,9 @@ class NQueens:
             queens_left.remove(queen_to_move)
             destination_col, conflicts_decrement_list, conflicts_increment_list = self.min_conflicts(queen_to_move)
             self.move_queen(queen_to_move, destination_col, conflicts_decrement_list, conflicts_increment_list)
+            # print(iteration_number, "moved queen at row:", queen_to_move,
+            #       "to col", destination_col, "     positions:", self.positions)
+            # print("queens_left, num_conflicts:", queens_left, self.num_conflicts)
             iteration_number += 1
 
         if self.is_solution():
@@ -72,9 +78,19 @@ class NQueens:
         for i in range(0, self.n):
             self.col_to_occurrence[i] = 0
 
+        for k in self.left_diagonal_to_rows.keys():
+            self.left_diagonal_to_rows[k] = set()
+
+        for k in self.right_diagonal_to_rows.keys():
+            self.right_diagonal_to_rows[k] = set()
+
+        for k in self.column_number_to_rows.keys():
+            self.column_number_to_rows[k] = set()
+
     def new_queens_left_set(self):
         """
         Create a new set for queens_left.
+
         :return: a set consists of numbers from 0 to n-1
         """
         return set(x for x in range(0, self.n))
@@ -93,27 +109,9 @@ class NQueens:
         """
         for row in range(0, self.n):
             # todo: remove testing
-            '''
             if row % 100 == 0:
                 print("Creating queen at row", row)
-            '''
-            div3odd = False
-            if self.n % 3 == 0 and self.n % 2 != 0:  # Special board size
-                div3odd = True
-
-            if row == 0:
-                destination_col = 0  # Column to put the new Queen
-            else:
-                next_col = self.positions[-1] + 2
-                if next_col >= self.n:
-                    # Reach the left end of the board
-                    destination_col = 1
-                    if div3odd:
-                        destination_col = 3
-                else:
-                    destination_col = next_col
-            conflicts_decrement_list, conflicts_increment_list = \
-                self.compute_conflict_changes_lists(row, None, destination_col)
+            destination_col, conflicts_decrement_list, conflicts_increment_list = self.min_conflicts(row)
             self.col_to_occurrence[destination_col] = self.col_to_occurrence[destination_col] + 1
             self.positions.append(destination_col)
             self.update_num_conflicts(row, destination_col, conflicts_decrement_list, conflicts_increment_list)
@@ -132,6 +130,7 @@ class NQueens:
         min_conflict = self.n
         min_conflict_cols = []  # columns with the minimum number of conflicts
 
+        # len(self.positions <= row if and only if the program is generating initial positions.
         if len(self.positions) <= row:
             col1 = None
         else:
@@ -140,20 +139,21 @@ class NQueens:
         not_found = -1  # must be a number outside of range 0 to n-1 inclusive.
         destination_col = not_found
         for col2 in self.col_to_occurrence:
-            if col2 != col1 and self.col_to_occurrence[col2] == 0:
+            if col1 != col2 and self.col_to_occurrence[col2] == 0:
                 if self.is_num_conflict_at_square_zero(row, col2):
                     destination_col = col2
-                    break
-        #             min_conflict_cols.append(col2)
-        # if len(min_conflict_cols) > 0:
-        #     destination_col = self.select_random_element(min_conflict_cols)
+                    # break
+                    min_conflict_cols.append(col2)
+        if len(min_conflict_cols) > 0:
+            destination_col = self.select_random_element(min_conflict_cols)
+
         if destination_col == not_found:
             found_one_conflict_col = False
             counter = 0
-            max_num_tries = 100
+            max_num_tries = self.n
             while not found_one_conflict_col and counter < max_num_tries:
                 rand_col = random.randrange(0, self.n)
-                if col2 != col1 and self.is_num_conflict_at_square_one(row, rand_col) == 1:
+                if col1 != rand_col and self.is_num_conflict_at_square_one(row, rand_col) == 1:
                     destination_col = rand_col
                     found_one_conflict_col = True
                 counter = counter + 1
@@ -162,7 +162,7 @@ class NQueens:
             # Iterate through all the columns along the given row.
             for col2 in range(0, self.n):
                 if col2 != col1:
-                    num = self.get_num_conflict_at_square(row, col2)  # O(n)
+                    num = self.get_num_conflict_at_square(row, col2)
                     if num < min_conflict:
                         min_conflict = num
                         min_conflict_cols = [col2]
@@ -170,6 +170,9 @@ class NQueens:
                         min_conflict_cols.append(col2)
             destination_col = self.select_random_element(min_conflict_cols)
 
+        if col1 is not None:
+            self.remove_from_maps_for_queen(row, col1)
+        self.add_to_maps_for_queen(row, destination_col)
         conflicts_decrement_list, conflicts_increment_list = \
             self.compute_conflict_changes_lists(row, col1, destination_col)
 
@@ -200,11 +203,14 @@ class NQueens:
         :param col1: the column index of the square
         :return: a boolean indicating whether the number of conflict is 0 at the given square.
         """
-        for row2 in range(0, len(self.positions)):
-            if row1 != row2:
-                col2 = self.positions[row2]
-                if self.has_conflict(row1, col1, row2, col2):
-                    return False
+        left_diagonal_index = self.get_left_diagonal_index(row1, col1)
+        right_diagonal_index = self.get_right_diagonal_index(row1, col1)
+
+        left_diagonal_queens = self.left_diagonal_to_rows[left_diagonal_index]
+        right_diagonal_queens = self.right_diagonal_to_rows[right_diagonal_index]
+        col_queens = self.column_number_to_rows[col1]
+        if len(left_diagonal_queens) != 0 or len(right_diagonal_queens) != 0 or len(col_queens) != 0:
+            return False
         return True
 
     def is_num_conflict_at_square_one(self, row1, col1):
@@ -215,14 +221,14 @@ class NQueens:
         :param col1: the column index of the square
         :return: a boolean indicating whether the number of conflict is 1 at the given square.
         """
-        num_conflict_at_square = 0
-        for row2 in range(0, len(self.positions)):
-            if row1 != row2:
-                col2 = self.positions[row2]
-                if self.has_conflict(row1, col1, row2, col2):
-                    num_conflict_at_square = num_conflict_at_square + 1
-                    if num_conflict_at_square == 2:
-                        return False
+        left_diagonal_index = self.get_left_diagonal_index(row1, col1)
+        right_diagonal_index = self.get_right_diagonal_index(row1, col1)
+
+        left_diagonal_queens = self.left_diagonal_to_rows[left_diagonal_index]
+        right_diagonal_queens = self.right_diagonal_to_rows[right_diagonal_index]
+        col_queens = self.column_number_to_rows[col1]
+        if len(left_diagonal_queens) + len(right_diagonal_queens) + len(col_queens) != 1:
+            return False
         return True
 
     def has_conflict(self, row1, col1, row2, col2):
@@ -275,11 +281,23 @@ class NQueens:
         :return: a list of row numbers representing the queens in conflict with this square
         """
         conflicting_positions = []
-        for row2 in range(0, len(self.positions)):
-            if row1 != row2:
-                col2 = self.positions[row2]
-                if self.has_conflict(row1, col1, row2, col2):
-                    conflicting_positions.append(row2)
+        left_diagonal_index = self.get_left_diagonal_index(row1, col1)
+        right_diagonal_index = self.get_right_diagonal_index(row1, col1)
+
+        left_diagonal_queens = self.left_diagonal_to_rows[left_diagonal_index]
+        right_diagonal_queens = self.right_diagonal_to_rows[right_diagonal_index]
+        col_queens = self.column_number_to_rows[col1]
+
+        for queen in left_diagonal_queens:
+            if queen != row1:
+                conflicting_positions.append(queen)
+        for queen in right_diagonal_queens:
+            if queen != row1:
+                conflicting_positions.append(queen)
+        for queen in col_queens:
+            if queen != row1:
+                conflicting_positions.append(queen)
+
         return conflicting_positions
 
     def move_queen(self, source_row, destination_col, conflicts_decrement_list, conflicts_increment_list):
@@ -337,14 +355,81 @@ class NQueens:
         :param queens_left: a list of row numbers for the queens that have been moved the least amount of times.
         :return: a row number representing the queen with maximum number of conflicts.
         """
-        max = -1
+        max_num_conflicts = -1
         max_conflict_row_index = -1
         for row in queens_left:
             num_conflict = self.num_conflicts[row]
-            if num_conflict > max:
-                max = num_conflict
+            if num_conflict > max_num_conflicts:
+                max_num_conflicts = num_conflict
                 max_conflict_row_index = row
         return max_conflict_row_index
+
+    def get_left_diagonal_index(self, row):
+        """
+        Get a unique index key of the left diagonal that the queen is at.
+
+        :param row: row number of a queen
+        :return: the index of the uniquely defined left diagonal for the queen.
+        """
+        return row - self.positions[row]
+
+    def get_left_diagonal_index(self, row, col):
+        """
+        Get a unique index key of the left diagonal of a square.
+
+        :param row: row number of a square
+        :param col: column number of a square
+        :return: the index of the uniquely defined left diagonal for the square.
+        """
+        return row - col
+
+    def get_right_diagonal_index(self, row):
+        """
+        Get a unique index key of the right diagonal that the queen is at.
+
+        :param row: row number of a queen
+        :return: the index of the uniquely defined right diagonal for the queen.
+        """
+        return row + self.positions[row]
+
+    def get_right_diagonal_index(self, row, col):
+        """
+        Get a unique index key of the right diagonal of a square.
+
+        :param row: row number of a square
+        :param col: column number of a square
+        :return: the index of the uniquely defined right diagonal for the square.
+        """
+        return row + col
+
+    def add_to_maps_for_queen(self, row, col):
+        """
+        Update mapping information for the queen placed at the given row and column.
+
+        :param row: row number of the queen
+        :param col: column number of the queen
+        """
+        left_diagonal_index = row - col
+        right_diagonal_index = row + col
+        self.column_number_to_rows[col].add(row)
+        self.left_diagonal_to_rows[left_diagonal_index].add(row)
+        self.right_diagonal_to_rows[right_diagonal_index].add(row)
+
+    def remove_from_maps_for_queen(self, row, col):
+        """
+        Update mapping information for the queen removed from the given row and column.
+
+        :param row: row number of the queen
+        :param col: column number of the queen
+        """
+        left_diagonal_index = row - col
+        right_diagonal_index = row + col
+        # remark: potentially need to check existence before removing.
+        # but do not necessarily need to check because when the functions is called
+        # the row must have been added to the mappings.
+        self.column_number_to_rows[col].remove(row)
+        self.left_diagonal_to_rows[left_diagonal_index].remove(row)
+        self.right_diagonal_to_rows[right_diagonal_index].remove(row)
 
 
 def read_file_to_list(file_name):
@@ -352,6 +437,15 @@ def read_file_to_list(file_name):
     input_data = [int(line.rstrip('\n')) for line in file]
     file.close()
     return input_data
+
+
+def write_1d_list_to_file(data, file_name):
+    file = open(file_name, 'a+')
+    # needed to add 1 to x because row and column numbers on a chess board
+    # are 1 higher than Python list indices.
+    new_line = '[' + ''.join([(str(x + 1) + ',') for x in data]).rstrip(',') + ']'
+    file.write(new_line + '\n')
+    file.close()
 
 
 def write_2d_list_to_file(data, file_name):
@@ -367,24 +461,28 @@ def write_2d_list_to_file(data, file_name):
 def main():
     input_file_name = 'nqueens.txt'
     output_file_name = 'nqueens_out.txt'
-    input_data = read_file_to_list(input_file_name)
-    # print(input_data if len(input_data) < 100 else input_data[0:100])
+    # open and then close the file with w+ so that the file starts empty
+    file = open(output_file_name, 'w+')
+    file.close()
 
-    results = []
+    input_data = read_file_to_list(input_file_name)
+    # results = []
     for n in input_data:
         if n >= 4:
             print("Finding a solution for n =", n)
-            nqueens = NQueens(n)
             start_time = time.time()
-            results.append(nqueens.nqueens_min_conflicts_iterative_repair())
+            nqueens = NQueens(n)
+            # results.append(nqueens.nqueens_min_conflicts_iterative_repair())
+            write_1d_list_to_file(nqueens.nqueens_min_conflicts_iterative_repair(), output_file_name)
             print("The time duration for initialization is", nqueens.initialization_time_duration)
-            print("The time used for n =", n, "is", time.time() - start_time)
+            print("The total time used for n =", n, "is", time.time() - start_time)
             print("The number of attempts taken for n =", n, "is", nqueens.num_attempts)
-            print("The number of steps taken for n =", n, "is", nqueens.num_steps)
+            print("The number of repairs taken for n =", n, "is", nqueens.num_steps)
         else:
-            print("There is no solution for n less than or equal to 3.")
-
-    write_2d_list_to_file(results, output_file_name)
+            print("There is no solution for n equal to", n, end='')
+            print(" or any other n less than or equal to 3.")
+        print()
+    # write_2d_list_to_file(results, output_file_name)
 
 
 main()
