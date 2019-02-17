@@ -41,9 +41,6 @@ class NQueens:
         iteration_number = 0
         max_iteration_number = 500
         while iteration_number < max_iteration_number:
-            # todo: remove testing
-            if iteration_number % 100 == 0:
-                print('iteration_number is', iteration_number)
             if self.is_solution():
                 self.num_steps = iteration_number
                 return self.positions
@@ -111,9 +108,6 @@ class NQueens:
         random.shuffle(self.cols_left)
 
         for row in range(self.n):
-            # todo: remove testing
-            if row % 1000 == 0:
-                print("Creating queen at row", row)
             destination_col = self.min_conflicts_row_initialization(row)
             self.positions.append(destination_col)
             self.update_occurrences(row, None, destination_col)
