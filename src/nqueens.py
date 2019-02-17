@@ -16,13 +16,12 @@ class NQueens:
         """
         self.n = n
         self.positions = []
-        self.num_conflicts = []
-        self.col_to_occurrence = dict()
-        # left diagonal keys from -(n-1) to n-1, right diagonal keys from 0 to 2*(n-1)
-        # add 1 to the right end due to definition of range function, and we get (n-1)+1 = n, and 2*(n-1)+1 = 2*n-1
-        self.left_diagonal_to_rows = dict.fromkeys([x for x in range(-n + 1, n)])
-        self.right_diagonal_to_rows = dict.fromkeys([x for x in range(0, 2 * n - 1)])
-        self.column_number_to_rows = dict.fromkeys(x for x in range(0, n))
+
+        self.col_occurrences = [0 for x in range(n)]
+        self.left_diagonal_occurrences = [0 for x in range((n - 1) * 2 + 1)]
+        self.right_diagonal_occurrences = [0 for x in range((n - 1) * 2 + 1)]
+        self.cols_left = [x for x in range(self.n)]
+
         # parameters for algorithm analysis
         self.num_attempts = 1
         self.num_steps = 0
@@ -40,7 +39,7 @@ class NQueens:
         self.initialization_time_duration = time.time() - self.start_time
         queens_left = self.new_queens_left_set()
         iteration_number = 0
-        max_iteration_number = self.n * 100
+        max_iteration_number = 500
         while iteration_number < max_iteration_number:
             # todo: remove testing
             if iteration_number % 100 == 0:
@@ -52,20 +51,24 @@ class NQueens:
                 queens_left = self.new_queens_left_set()
 
             queen_to_move = self.find_max(queens_left)
+
+            queen_col = self.positions[queen_to_move]
             queens_left.remove(queen_to_move)
-            destination_col, conflicts_decrement_list, conflicts_increment_list = self.min_conflicts(queen_to_move)
-            self.move_queen(queen_to_move, destination_col, conflicts_decrement_list, conflicts_increment_list)
-            # print(iteration_number, "moved queen at row:", queen_to_move,
-            #       "to col", destination_col, "     positions:", self.positions)
-            # print("queens_left, num_conflicts:", queens_left, self.num_conflicts)
+            destination_col = self.min_conflicts(queen_to_move)
+            self.move_queen(queen_to_move, destination_col)
+
+            if self.col_occurrences[queen_col] == 0:
+                self.cols_left.append(queen_col)
+            if self.col_occurrences[destination_col] == 1:
+                self.cols_left.remove(destination_col)
+
             iteration_number += 1
 
         if self.is_solution():
-            self.num_steps = self.num_steps + iteration_number + 1
+            self.num_steps = iteration_number
             return self.positions
         else:
             self.num_attempts += 1
-            # todo: remove testing
             print('Current number of attempts (caused by restarting) is', self.num_attempts)
             return self.nqueens_min_conflicts_iterative_repair()
 
@@ -74,18 +77,13 @@ class NQueens:
         Reset the parameters of the class in order to restart the search for a solution.
         """
         self.positions = []
-        self.num_conflicts = [0 for x in range(self.n)]
-        for i in range(0, self.n):
-            self.col_to_occurrence[i] = 0
+        self.col_occurrences = [0 for x in range(self.n)]
+        self.left_diagonal_occurrences = [0 for x in range((self.n - 1) * 2 + 1)]
+        self.right_diagonal_occurrences = [0 for x in range((self.n - 1) * 2 + 1)]
+        self.cols_left = [x for x in range(self.n)]
 
-        for k in self.left_diagonal_to_rows.keys():
-            self.left_diagonal_to_rows[k] = set()
-
-        for k in self.right_diagonal_to_rows.keys():
-            self.right_diagonal_to_rows[k] = set()
-
-        for k in self.column_number_to_rows.keys():
-            self.column_number_to_rows[k] = set()
+        self.num_steps = 0
+        self.initialization_time_duration = 0
 
     def new_queens_left_set(self):
         """
@@ -97,24 +95,50 @@ class NQueens:
 
     def is_solution(self):
         """
-        Checks whether a solution is found, that is, whether all elements in the num_conflicts list is 0.
+        Checks whether a solution is found.
 
-        :return: a boolean indicating whether num_conflicts has size n and all elements of the num_conflicts is 0.
+        :return: a boolean indicating whether a solution is found.
         """
-        return not any(self.num_conflicts)
+        for row in range(self.n):
+            if self.get_num_conflicts_at_square_with_queen(row, self.positions[row]) != 0:
+                return False
+        return True
 
     def generate_initial_positions(self):
         """
         Populate self.positions with values representing queens columns.
         """
-        for row in range(0, self.n):
+        random.shuffle(self.cols_left)
+
+        for row in range(self.n):
             # todo: remove testing
-            if row % 100 == 0:
+            if row % 1000 == 0:
                 print("Creating queen at row", row)
-            destination_col, conflicts_decrement_list, conflicts_increment_list = self.min_conflicts(row)
-            self.col_to_occurrence[destination_col] = self.col_to_occurrence[destination_col] + 1
+            destination_col = self.min_conflicts_row_initialization(row)
             self.positions.append(destination_col)
-            self.update_num_conflicts(row, destination_col, conflicts_decrement_list, conflicts_increment_list)
+            self.update_occurrences(row, None, destination_col)
+            # self.cols_left.remove(destination_col)
+            self.remove_from_end(destination_col, self.cols_left)
+
+    def min_conflicts_row_initialization(self, row):
+        """
+        Find a column from the 100 of the remaining columns that has the minimum conflict at the given row.
+        :param row: the given row
+        :return: the destination column
+        """
+        min_conflicts = self.n
+        min_conflict_cols = []  # columns with the minimum number of conflicts
+        # Iterate through 100 of the columns along the given row to save time
+        for i in range(len(self.cols_left) - 1, max(-1, len(self.cols_left) - 101), -1):
+            col = self.cols_left[i]
+            num_conflicts = self.get_num_conflicts_at_square(row, col)
+            if num_conflicts < min_conflicts:
+                min_conflicts = num_conflicts
+                min_conflict_cols = [col]
+            elif num_conflicts == min_conflicts:
+                min_conflict_cols.append(col)
+        destination_col = self.select_random_element(min_conflict_cols)
+        return destination_col
 
     def min_conflicts(self, row):
         """
@@ -125,123 +149,66 @@ class NQueens:
                  the list of row numbers where their conflict numbers need to be reduced by 1, and
                  the list of row numbers where their conflict numbers need to be increased by 1
         """
-        # min_conflict is the current minimum number of conflicts at a column along the row.
-        # Must be initialized to a number greater than the largest possible number of conflicts, i.e. self.n
-        min_conflict = self.n
-        min_conflict_cols = []  # columns with the minimum number of conflicts
-
         # len(self.positions <= row if and only if the program is generating initial positions.
         if len(self.positions) <= row:
             col1 = None
         else:
             col1 = self.positions[row]
 
+        min_conflict_cols = []  # columns with the minimum number of conflicts
+        one_conflict_cols = []
+
         not_found = -1  # must be a number outside of range 0 to n-1 inclusive.
         destination_col = not_found
-        for col2 in self.col_to_occurrence:
-            if col1 != col2 and self.col_to_occurrence[col2] == 0:
-                if self.is_num_conflict_at_square_zero(row, col2):
-                    destination_col = col2
-                    # break
-                    min_conflict_cols.append(col2)
+
+        # random.shuffle(self.cols_left)
+        for col2 in self.cols_left:
+            num_conflict = self.get_num_conflicts_at_square(row, col2)
+            if col1 != col2 and num_conflict == 0:
+                destination_col = col2
+                # break
+                min_conflict_cols.append(col2)
+            elif num_conflict == 1:
+                one_conflict_cols.append(col2)
         if len(min_conflict_cols) > 0:
             destination_col = self.select_random_element(min_conflict_cols)
+        min_conflict_cols = []
 
-        if destination_col == not_found:
-            found_one_conflict_col = False
-            counter = 0
-            max_num_tries = self.n
-            while not found_one_conflict_col and counter < max_num_tries:
-                rand_col = random.randrange(0, self.n)
-                if col1 != rand_col and self.is_num_conflict_at_square_one(row, rand_col) == 1:
-                    destination_col = rand_col
-                    found_one_conflict_col = True
-                counter = counter + 1
+        # if destination_col == not_found:
+        #     found_one_conflict_col = False
+        #     if len(one_conflict_cols) > 0:
+        #         destination_col = random.choice(one_conflict_cols)
+        #         found_one_conflict_col = True
+        #     counter = 0
+        #     max_num_tries = 100
+        #     while not found_one_conflict_col and counter < max_num_tries:
+        #         rand_col = random.randrange(0, self.n)
+        #         if col1 != rand_col and self.get_num_conflicts_at_square(row, rand_col) == 1:
+        #             destination_col = rand_col
+        #             found_one_conflict_col = True
+        #         counter = counter + 1
 
+        # min_conflict is the current minimum number of conflicts at a column along the row.
+        # Must be initialized to a number greater than the largest possible number of conflicts, i.e. self.n
+        min_conflicts = 2
         if destination_col == not_found:
             # Iterate through all the columns along the given row.
-            for col2 in range(0, self.n):
+            rand_start = random.randrange(0, self.n)
+            for i in range(rand_start, self.n + rand_start):
+                col2 = i % self.n
                 if col2 != col1:
-                    num = self.get_num_conflict_at_square(row, col2)
-                    if num < min_conflict:
-                        min_conflict = num
-                        min_conflict_cols = [col2]
-                    elif num == min_conflict:
+                    num_conflicts = self.get_num_conflicts_at_square(row, col2)
+                    if num_conflicts >= 3:
+                        pass
+                    elif num_conflicts == min_conflicts:
                         min_conflict_cols.append(col2)
+                    elif num_conflicts < min_conflicts:
+                        min_conflicts = num_conflicts
+                        min_conflict_cols = [col2]
+                if len(min_conflict_cols) > 100:
+                    break
             destination_col = self.select_random_element(min_conflict_cols)
-
-        if col1 is not None:
-            self.remove_from_maps_for_queen(row, col1)
-        self.add_to_maps_for_queen(row, destination_col)
-        conflicts_decrement_list, conflicts_increment_list = \
-            self.compute_conflict_changes_lists(row, col1, destination_col)
-
-        return destination_col, conflicts_decrement_list, conflicts_increment_list
-
-    def get_num_conflict_at_square(self, row1, col1):
-        """
-        Compute the number of conflicts at the given square.
-
-        :param row1: the row index of the square
-        :param col1: the column index of the square
-        :return: the number of conflicts at the square
-        """
-        num_conflict_at_square = 0
-        for row2 in range(0, len(self.positions)):
-            if row1 != row2:
-                col2 = self.positions[row2]
-                if self.has_conflict(row1, col1, row2, col2):
-                    num_conflict_at_square += 1
-
-        return num_conflict_at_square
-
-    def is_num_conflict_at_square_zero(self, row1, col1):
-        """
-        Checks whehter the number of conflicts at the given square is 0.
-
-        :param row1: the row index of the square
-        :param col1: the column index of the square
-        :return: a boolean indicating whether the number of conflict is 0 at the given square.
-        """
-        left_diagonal_index = self.get_left_diagonal_index(row1, col1)
-        right_diagonal_index = self.get_right_diagonal_index(row1, col1)
-
-        left_diagonal_queens = self.left_diagonal_to_rows[left_diagonal_index]
-        right_diagonal_queens = self.right_diagonal_to_rows[right_diagonal_index]
-        col_queens = self.column_number_to_rows[col1]
-        if len(left_diagonal_queens) != 0 or len(right_diagonal_queens) != 0 or len(col_queens) != 0:
-            return False
-        return True
-
-    def is_num_conflict_at_square_one(self, row1, col1):
-        """
-        Checks whehter the number of conflicts at the given square is 1.
-
-        :param row1: the row index of the square
-        :param col1: the column index of the square
-        :return: a boolean indicating whether the number of conflict is 1 at the given square.
-        """
-        left_diagonal_index = self.get_left_diagonal_index(row1, col1)
-        right_diagonal_index = self.get_right_diagonal_index(row1, col1)
-
-        left_diagonal_queens = self.left_diagonal_to_rows[left_diagonal_index]
-        right_diagonal_queens = self.right_diagonal_to_rows[right_diagonal_index]
-        col_queens = self.column_number_to_rows[col1]
-        if len(left_diagonal_queens) + len(right_diagonal_queens) + len(col_queens) != 1:
-            return False
-        return True
-
-    def has_conflict(self, row1, col1, row2, col2):
-        """
-        Determines whether two queens on the given row numbers and column numbers will have a conflict.
-
-        :param row1: row number of the first square
-        :param col1: column number of the first square
-        :param row2: row number of the second square
-        :param col2: column number of the second square
-        :return: a boolean indicating whether queens on these two squares will have a conflict
-        """
-        return (row1 == row2) or (col1 == col2) or (row1 - col1 == row2 - col2) or (row1 + col1 == row2 + col2)
+        return destination_col
 
     def select_random_element(self, lis):
         """
@@ -253,99 +220,48 @@ class NQueens:
         index = random.randrange(0, len(lis))
         return lis[index]
 
-    def compute_conflict_changes_lists(self, row, col1, col2):
-        """
-        Compute the lists that contains the row numbers where their conflict numbers need to be reduced by 1 and
-        increased by 1.
-
-        :param row: the row of the queen
-        :param col1: the original column of the queen
-        :param col2: the destination column of the queen
-        :return: the list of row numbers where their conflict numbers need to be reduced by 1, and
-                 the list of row numbers where their conflict numbers need to be increased by 1
-        """
-        conflicts_decrement_list = []
-        if col1 is not None:
-            conflicts_decrement_list = self.get_conflicting_positions(row, col1)
-        conflicts_increment_list = self.get_conflicting_positions(row, col2)
-
-        return conflicts_decrement_list, conflicts_increment_list
-
-    def get_conflicting_positions(self, row1, col1):
-        """
-        Get a list of row numbers representing the queens in conflict with this square,
-        not including the square itself.
-
-        :param row1: row index of the square
-        :param col1: column index of the square
-        :return: a list of row numbers representing the queens in conflict with this square
-        """
-        conflicting_positions = []
-        left_diagonal_index = self.get_left_diagonal_index(row1, col1)
-        right_diagonal_index = self.get_right_diagonal_index(row1, col1)
-
-        left_diagonal_queens = self.left_diagonal_to_rows[left_diagonal_index]
-        right_diagonal_queens = self.right_diagonal_to_rows[right_diagonal_index]
-        col_queens = self.column_number_to_rows[col1]
-
-        for queen in left_diagonal_queens:
-            if queen != row1:
-                conflicting_positions.append(queen)
-        for queen in right_diagonal_queens:
-            if queen != row1:
-                conflicting_positions.append(queen)
-        for queen in col_queens:
-            if queen != row1:
-                conflicting_positions.append(queen)
-
-        return conflicting_positions
-
-    def move_queen(self, source_row, destination_col, conflicts_decrement_list, conflicts_increment_list):
+    def move_queen(self, source_row, destination_col):
         """
         Moves a queen on the given row number to the destination column on the same row.
         The function also updates the num_conflicts list.
 
         :param source_row: the row number of the queen to be moved
         :param destination_col: the col number of the queen to be moved to on the source_row
-        :param conflicts_decrement_list: the list of row numbers where their conflict numbers need to be reduced by 1
-        :param conflicts_increment_list: the list of row numbers where their conflict numbers need to be increased by 1
         """
-        source_col = self.positions[source_row]
-        self.col_to_occurrence[source_col] = self.col_to_occurrence[source_col] - 1
-        self.col_to_occurrence[destination_col] = self.col_to_occurrence[destination_col] + 1
+        self.update_occurrences(source_row, self.positions[source_row], destination_col)
         self.positions[source_row] = destination_col
-        self.update_num_conflicts(source_row, destination_col, conflicts_decrement_list, conflicts_increment_list)
 
-    def update_num_conflicts(self, source_row, destination_col, conflicts_decrement_list, conflicts_increment_list):
+    def update_occurrences(self, source_row, original_col, destination_col):
         """
         Update the number of conflicts for each queen.
 
         :param source_row: the row index of the queen in change
-        :param destination_col: the column index of the queen in change
-        :param conflicts_decrement_list: the list of row numbers where their conflict numbers need to be reduced by 1
-        :param conflicts_increment_list: the list of row numbers where their conflict numbers need to be increased by 1
+        :param original_col: the original column index of the queen
+        :param destination_col: the destination column index of the queen
         """
-        self.num_conflicts[source_row] = self.get_num_conflict_at_square(source_row, destination_col)
-        self.num_conflicts_decrement(conflicts_decrement_list)
-        self.num_conflicts_increment(conflicts_increment_list)
+        if original_col is not None:
+            original_left_diagonal_index = self.get_left_diagonal_index(source_row, original_col)
+            original_right_diagonal_index = self.get_right_diagonal_index(source_row, original_col)
 
-    def num_conflicts_decrement(self, conflicts_decrement_list):
-        """
-        Decrease the number of conflicts for the queens at the rows given in conflicts_decrement_list by 1.
+            self.col_occurrences[original_col] = self.col_occurrences[original_col] - 1
+            self.left_diagonal_occurrences[original_left_diagonal_index] = \
+                self.left_diagonal_occurrences[original_left_diagonal_index] - 1
+            self.right_diagonal_occurrences[original_right_diagonal_index] = \
+                self.right_diagonal_occurrences[original_right_diagonal_index] - 1
 
-        :param conflicts_decrement_list: a list of row numbers of queens where number of conflicts to be reduced.
-        """
-        for row in conflicts_decrement_list:
-            self.num_conflicts[row] = self.num_conflicts[row] - 1
+        destination_left_diagonal_index = self.get_left_diagonal_index(source_row, destination_col)
+        destination_right_diagonal_index = self.get_right_diagonal_index(source_row, destination_col)
 
-    def num_conflicts_increment(self, conflicts_increment_list):
-        """
-        Increase the number of conflicts for the queens at the rows given in conflicts_decrement_list by 1.
+        self.col_occurrences[destination_col] = self.col_occurrences[destination_col] + 1
+        self.left_diagonal_occurrences[destination_left_diagonal_index] = \
+            self.left_diagonal_occurrences[destination_left_diagonal_index] + 1
+        self.right_diagonal_occurrences[destination_right_diagonal_index] = \
+            self.right_diagonal_occurrences[destination_right_diagonal_index] + 1
 
-        :param conflicts_increment_list: a list of row numbers of queens where number of conflicts is to be increase.
-        """
-        for row in conflicts_increment_list:
-            self.num_conflicts[row] = self.num_conflicts[row] + 1
+        # print(source_row, original_col, destination_col, destination_left_diagonal_index, destination_right_diagonal_index)
+        # print(self.col_occurrences)
+        # print(self.left_diagonal_occurrences)
+        # print(self.right_diagonal_occurrences)
 
     def find_max(self, queens_left):
         """
@@ -356,22 +272,43 @@ class NQueens:
         :return: a row number representing the queen with maximum number of conflicts.
         """
         max_num_conflicts = -1
-        max_conflict_row_index = -1
+        max_conflict_queens = []
+
         for row in queens_left:
-            num_conflict = self.num_conflicts[row]
+            num_conflict = self.get_num_conflicts_at_square_with_queen(row, self.positions[row])
             if num_conflict > max_num_conflicts:
                 max_num_conflicts = num_conflict
-                max_conflict_row_index = row
-        return max_conflict_row_index
+                max_conflict_queens = [row]
+            elif num_conflict == max_num_conflicts:
+                max_conflict_queens.append(row)
+        # return self.select_random_element(max_conflict_queens)
 
-    def get_left_diagonal_index(self, row):
-        """
-        Get a unique index key of the left diagonal that the queen is at.
+        return random.choice(max_conflict_queens)
 
-        :param row: row number of a queen
-        :return: the index of the uniquely defined left diagonal for the queen.
+    def get_num_conflicts_at_square(self, row, col):
         """
-        return row - self.positions[row]
+        Compute the number of conflicts at a given square.
+
+        :param row: row index of square
+        :param col: column index of square
+        :return: the number of conflicts
+        """
+        return self.col_occurrences[col] \
+               + self.left_diagonal_occurrences[self.get_left_diagonal_index(row, col)] \
+               + self.right_diagonal_occurrences[self.get_right_diagonal_index(row, col)]
+
+    def get_num_conflicts_at_square_with_queen(self, row, col):
+        """
+        Compute the number of conflicts at a given square where a queen is at.
+
+        :param row: row index of square
+        :param col: column index of square
+        :return: the number of conflicts at the square with a queen.
+        """
+        # Minus three because the queen itself is counted 3 times for that square.
+        return - 3 + self.col_occurrences[col] \
+               + self.left_diagonal_occurrences[self.get_left_diagonal_index(row, col)] \
+               + self.right_diagonal_occurrences[self.get_right_diagonal_index(row, col)]
 
     def get_left_diagonal_index(self, row, col):
         """
@@ -383,15 +320,6 @@ class NQueens:
         """
         return row - col
 
-    def get_right_diagonal_index(self, row):
-        """
-        Get a unique index key of the right diagonal that the queen is at.
-
-        :param row: row number of a queen
-        :return: the index of the uniquely defined right diagonal for the queen.
-        """
-        return row + self.positions[row]
-
     def get_right_diagonal_index(self, row, col):
         """
         Get a unique index key of the right diagonal of a square.
@@ -402,34 +330,15 @@ class NQueens:
         """
         return row + col
 
-    def add_to_maps_for_queen(self, row, col):
-        """
-        Update mapping information for the queen placed at the given row and column.
-
-        :param row: row number of the queen
-        :param col: column number of the queen
-        """
-        left_diagonal_index = row - col
-        right_diagonal_index = row + col
-        self.column_number_to_rows[col].add(row)
-        self.left_diagonal_to_rows[left_diagonal_index].add(row)
-        self.right_diagonal_to_rows[right_diagonal_index].add(row)
-
-    def remove_from_maps_for_queen(self, row, col):
-        """
-        Update mapping information for the queen removed from the given row and column.
-
-        :param row: row number of the queen
-        :param col: column number of the queen
-        """
-        left_diagonal_index = row - col
-        right_diagonal_index = row + col
-        # remark: potentially need to check existence before removing.
-        # but do not necessarily need to check because when the functions is called
-        # the row must have been added to the mappings.
-        self.column_number_to_rows[col].remove(row)
-        self.left_diagonal_to_rows[left_diagonal_index].remove(row)
-        self.right_diagonal_to_rows[right_diagonal_index].remove(row)
+    def remove_from_end(self, x, lis):
+        i = -1
+        while lis[i] != x:
+            i -= 1
+        while i < -1:
+            lis[i] = lis[i + 1]
+            i += 1
+        # remove last element of list.
+        lis.pop()
 
 
 def read_file_to_list(file_name):
