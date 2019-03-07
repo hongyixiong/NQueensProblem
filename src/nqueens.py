@@ -346,7 +346,7 @@ def write_1d_list_to_file(data, file_name):
     file = open(file_name, 'a+')
     # needed to add 1 to x because row and column numbers on a chess board
     # are 1 higher than Python list indices.
-    new_line = '[' + ''.join([(str(x + 1) + ',') for x in data]).rstrip(',') + ']'
+    new_line = '[' + ','.join([str(x + 1) for x in data]) + ']'
     file.write(new_line + '\n')
     file.close()
 
