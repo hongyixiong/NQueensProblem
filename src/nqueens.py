@@ -41,28 +41,34 @@ class NQueens:
         iteration_number = 0
         max_iteration_number = 500
         while iteration_number < max_iteration_number:
+            if iteration_number % 10 == 0:
+                print('Iteration number is', iteration_number)
             if self.is_solution():
-                self.num_steps = iteration_number
+                # self.num_steps = iteration_number
                 return self.positions
             if len(queens_left) == 0:
                 queens_left = self.new_queens_left_set()
 
-            queen_to_move = self.find_max(queens_left)
+            one_queen_to_move, queens_to_move, max_num_conflicts = self.find_max(queens_left)
 
-            queen_col = self.positions[queen_to_move]
-            queens_left.remove(queen_to_move)
-            destination_col = self.min_conflicts(queen_to_move)
-            self.move_queen(queen_to_move, destination_col)
+            for i in range(len(queens_to_move)):
+                queen_to_move = queens_to_move[i]
 
-            if self.col_occurrences[queen_col] == 0:
-                self.cols_left.append(queen_col)
-            if self.col_occurrences[destination_col] == 1:
-                self.cols_left.remove(destination_col)
+                queen_col = self.positions[queen_to_move]
+                queens_left.remove(queen_to_move)
+                destination_col = self.min_conflicts(queen_to_move)
+                self.move_queen(queen_to_move, destination_col)
+
+                if self.col_occurrences[queen_col] == 0:
+                    self.cols_left.append(queen_col)
+                if self.col_occurrences[destination_col] == 1:
+                    self.cols_left.remove(destination_col)
+                self.num_steps += 1
 
             iteration_number += 1
 
         if self.is_solution():
-            self.num_steps = iteration_number
+            # self.num_steps = iteration_number
             return self.positions
         else:
             self.num_attempts += 1
@@ -277,7 +283,7 @@ class NQueens:
                 max_conflict_queens.append(row)
         # return self.select_random_element(max_conflict_queens)
 
-        return random.choice(max_conflict_queens)
+        return random.choice(max_conflict_queens), max_conflict_queens, max_num_conflicts
 
     def get_num_conflicts_at_square(self, row, col):
         """
